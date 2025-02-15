@@ -1,4 +1,5 @@
 import os
+import dj_database_url
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -12,11 +13,19 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-%@(%_&&l(0)$j=wx91(g+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = 'RENDER' not in os.environ
 
+# Update allowed hosts
 ALLOWED_HOSTS = []
-
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
+# Add any other domains you want to allow
+ALLOWED_HOSTS.extend([
+    'localhost',
+    '127.0.0.1',
+    '.onrender.com',
+])
+
 
 
 # Static files (CSS, JavaScript, Images)
@@ -108,17 +117,24 @@ USE_TZ = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Database Configuration
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'totfdb',
-        'USER': 'totfuser',
-        'PASSWORD': 'Dheeran@2710',
-        'HOST': 'localhost',
-        'PORT': '5432',
+if 'RENDER' in os.environ:
+    # Parse database URL for Render
+    DATABASE_URL = os.environ.get('DATABASE_URL')
+    DATABASES = {
+        'default': dj_database_url.parse(DATABASE_URL)
     }
-}
+else:
+    # Local development database settings
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'totfdb',
+            'USER': 'totfuser',
+            'PASSWORD': 'your_local_password',
+            'HOST': 'localhost',
+            'PORT': '5432',
+        }
+    }
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",

@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
+# exit on error
 set -o errexit
 
-# Make build.sh executable
-chmod a+x build.sh
-
-# Install Python dependencies
+# Install dependencies
+pip install --upgrade pip
 pip install -r requirements.txt
 
 # Collect static files
 python manage.py collectstatic --no-input
 
-# Run migrations
-python manage.py migrate
+# Run migrations only if database is available
+if [ "$DATABASE_URL" != "" ]; then
+    python manage.py migrate
+fi
