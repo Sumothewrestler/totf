@@ -8,31 +8,32 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-%@(%_&&l(0)$j=wx91(g+i&ridsasp8=w!x&9vxw@ck#if5$p0"
-
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-%@(%_&&l(0)$j=wx91(g+i&ridsasp8=w!x&9vxw@ck#if5$p0')
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = 'RENDER' not in os.environ
 
-ALLOWED_HOSTS = [
-    'localhost',
-    '127.0.0.1',
-    'metrotracker.ddns.net',
-    '192.168.29.210',  # Your local IP
-    '49.47.242.235',   # Your public IP
-]
+ALLOWED_HOSTS = []
+
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
-STATIC_ROOT = str(BASE_DIR / 'static')  # Convert Path to string explicitly
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Where collectstatic will put files
+
+# Extra places for collectstatic to find static files.
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),  # Your project's static files
+]
+
+# Simplified static file serving.
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = str(BASE_DIR / 'media')
-
-# Optional: If you have additional static files directories
-STATICFILES_DIRS = [
-    str(BASE_DIR / 'staticfiles'),
-]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -49,6 +50,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',    
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -106,6 +108,7 @@ USE_TZ = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Database Configuration
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
