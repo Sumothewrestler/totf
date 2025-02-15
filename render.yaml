@@ -3,7 +3,7 @@ services:
     name: totf-backend
     env: python
     buildCommand: "./build.sh"
-    startCommand: "gunicorn myproject.wsgi:application"
+    startCommand: "gunicorn myproject.wsgi:application"  # Changed from your_project to myproject
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -13,6 +13,8 @@ services:
         generateValue: true
       - key: RENDER
         value: true
+      - key: DJANGO_SETTINGS_MODULE
+        value: myproject.settings
     buildEnv:
       - key: PYTHON_VERSION
         value: 3.11.0
