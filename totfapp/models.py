@@ -457,6 +457,12 @@ class Debt(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def delete(self, *args, **kwargs):
+        # First delete all related schedules
+        self.debtpaymentschedule_set.all().delete()
+        # Then delete the debt itself
+        super().delete(*args, **kwargs)
+
 class DebtPaymentSchedule(models.Model):
     STATUS_CHOICES = [
         ('Pending', 'Pending'),
