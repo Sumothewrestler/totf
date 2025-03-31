@@ -32,6 +32,7 @@ class TimeEntrySerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='activity.category.name', read_only=True)
     category_color = serializers.CharField(source='activity.category.color', read_only=True)
     duration_minutes = serializers.IntegerField(read_only=True)
+    sync_token = serializers.CharField(read_only=True)
     
     class Meta:
         model = TimeEntry
@@ -47,7 +48,8 @@ class TimeEntrySerializer(serializers.ModelSerializer):
             'notes',
             'is_manually_entered',
             'created_at',
-            'updated_at'
+            'updated_at',
+            'sync_token'
         ]
 
     def to_internal_value(self, data):

@@ -26,6 +26,7 @@ from rest_framework import viewsets, filters, status
 from django.db.models.functions import TruncDate, TruncMonth
 from rest_framework import generics
 from django.shortcuts import get_object_or_404
+import uuid
 
 class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
@@ -126,20 +127,80 @@ class TimeEntryViewSet(viewsets.ModelViewSet):
             }
         })
 
-    @action(detail=True, methods=['post'])
+    @action(detail=False, methods=['GET'])
+    def active(self, request):
+        """Return the currently active time entry (if any)"""
+        active_entry = self.get_queryset().filter(end_time=None).order_by('-start_time').first()
+        
+        if active_entry:
+            serializer = self.get_serializer(active_entry)
+            return Response(serializer.data)
+        return Response({}, status=status.HTTP_204_NO_CONTENT)
+    
+    @action(detail=False, methods=['POST'])
+    def start(self, request):
+        """Start a new time entry, ensuring any active entries are stopped first"""
+        # First stop any active entries
+        active_entries = self.get_queryset().filter(end_time=None)
+        
+        for entry in active_entries:
+            entry.end_time = timezone.now()
+            entry.save()
+        
+        # Create the new entry with a sync token
+        data = request.data.copy()
+        data['sync_token'] = str(uuid.uuid4())
+        
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=['POST'])
     def stop(self, request, pk=None):
-        """Stop a running time entry"""
-        time_entry = self.get_object()
-        if time_entry.end_time:
-            return Response(
-                {"error": "This time entry is already stopped"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        """Stop an active time entry and calculate duration"""
+        try:
+            entry = self.get_queryset().get(pk=pk)
             
-        time_entry.end_time = timezone.now()
-        time_entry.save()
-        serializer = self.get_serializer(time_entry)
-        return Response(serializer.data)
+            if entry.end_time:
+                return Response(
+                    {"detail": "This time entry is already stopped"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            entry.end_time = timezone.now()
+            duration = entry.end_time - entry.start_time
+            entry.duration_minutes = int(duration.total_seconds() / 60)
+            entry.save()
+            
+            serializer = self.get_serializer(entry)
+            return Response(serializer.data)
+            
+        except TimeEntry.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+    
+    @action(detail=False, methods=['GET'])
+    def sync_state(self, request):
+        """
+        Return the current state of time entries for synchronization
+        Includes active entry and recently completed entries
+        """
+        # Get active entry if any
+        active_entry = self.get_queryset().filter(end_time=None).order_by('-start_time').first()
+        
+        # Get recently completed entries in the last 24 hours
+        yesterday = timezone.now() - timezone.timedelta(days=1)
+        recent_entries = self.get_queryset().filter(
+            end_time__gte=yesterday
+        ).order_by('-end_time')[:5]
+        
+        response_data = {
+            'active_entry': self.get_serializer(active_entry).data if active_entry else None,
+            'recent_entries': self.get_serializer(recent_entries, many=True).data
+        }
+        
+        return Response(response_data)
 
     @action(detail=False, methods=['post'])
     def manual(self, request):
@@ -1687,8 +1748,8 @@ def dashgoalview(request):
 
     response_data = {
         'range': range_type,
-        'start_date': start_date.strftime('%Y-%m-%d'),
-        'end_date': end_date.strftime('%Y-%m-%d'),
+        'start_date': start_date,
+        'end_date': end_date,
         'summary': {
             'total_subprocesses': total_subprocesses,
             'completed_subprocesses': completed_count,

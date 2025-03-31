@@ -49,6 +49,7 @@ class TimeEntry(models.Model):
         null=True, 
         related_name='modified_entries'
     )
+    sync_token = models.CharField(max_length=64, blank=True, null=True)
 
     def clean(self):
         if self.end_time and self.start_time > self.end_time:
